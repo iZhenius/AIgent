@@ -1,0 +1,80 @@
+# Android/Kotlin (JVM) app .gitignore with AI API/dev secrets
+
+# -------------------- Build artifacts --------------------
+**/build/
+build/
+out/
+bin/
+gen/
+captures/
+*.apk
+*.ap_
+*.aab
+*.aapt2
+*.dex
+*.class
+*.jar
+*.war
+*.ear
+
+# -------------------- Gradle --------------------
+.gradle/
+!gradle/wrapper/gradle-wrapper.jar
+
+# -------------------- Kotlin/NDK external builds --------------------
+.kotlin/
+.externalNativeBuild/
+.cxx/
+obj/
+
+# -------------------- Local configuration --------------------
+local.properties
+
+# -------------------- IDE (Android Studio/IntelliJ) --------------------
+*.iml
+.idea/
+
+# -------------------- Signing/keystores --------------------
+*.jks
+*.keystore
+keystore.properties
+*.keystore.properties
+signing.properties
+
+# -------------------- Google/Firebase --------------------
+google-services.json
+crashlytics-build.properties
+fabric.properties
+
+# -------------------- Logs & profiling --------------------
+*.log
+*.hprof
+hs_err_pid*
+replay_pid*
+
+# -------------------- OS cruft --------------------
+.DS_Store
+Thumbs.db
+
+# -------------------- Fastlane (optional) --------------------
+fastlane/*.html
+fastlane/report.xml
+fastlane/screenshots/
+fastlane/test_output/
+
+# -------------------- AI API / Secrets --------------------
+# Keep example templates tracked, ignore real secrets
+.env
+.env.*
+!.env.example
+*.env
+*.secret
+secrets/**
+!secrets/README.md
+api_keys.*
+openai_key.txt
+anthropic_key.txt
+vertex_ai_key.json
+azure_openai_key.txt
+
+
