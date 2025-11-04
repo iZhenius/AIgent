@@ -1,19 +1,22 @@
 package com.izhenius.aigent.presentation.viewmodel
 
-import androidx.lifecycle.viewModelScope
+import android.util.Log
+import com.izhenius.aigent.domain.repository.OpenAiRepository
 import com.izhenius.aigent.presentation.model.ChatMessage
 import com.izhenius.aigent.presentation.model.ChatRole
 import com.izhenius.aigent.presentation.mvi.ChatUiAction
 import com.izhenius.aigent.presentation.mvi.ChatUiState
 import com.izhenius.aigent.presentation.mvi.MviViewModel
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
+import com.izhenius.aigent.util.launch
 
-class ChatViewModel : MviViewModel<ChatUiState, ChatUiAction>() {
+class ChatViewModel(
+    private val aiRepository: OpenAiRepository,
+) : MviViewModel<ChatUiState, ChatUiAction>() {
 
     override fun setInitialUiState(): ChatUiState {
         return ChatUiState(
             messages = emptyList(),
+            isLoading = false,
         )
     }
 
@@ -24,10 +27,17 @@ class ChatViewModel : MviViewModel<ChatUiState, ChatUiAction>() {
     }
 
     private fun sendMessage(text: String) {
-        updateMessages(ChatRole.User, text)
-        viewModelScope.launch {
-            delay(500)
-            updateMessages(ChatRole.Server, "You said: $text")
+        launch(
+            onError = {
+                Log.e("OpenAiRepository", it.stackTraceToString())
+                updateUiState { copy(isLoading = false) }
+            },
+        ) {
+            updateMessages(ChatRole.User, text)
+            updateUiState { copy(isLoading = true) }
+            val aiText = aiRepository.sendInput(text)
+            updateMessages(ChatRole.Server, aiText)
+            updateUiState { copy(isLoading = false) }
         }
     }
 

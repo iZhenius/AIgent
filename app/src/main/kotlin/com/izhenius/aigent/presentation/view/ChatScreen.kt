@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -21,6 +22,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -28,9 +30,12 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.izhenius.aigent.di.ChatViewModelFactory
 import com.izhenius.aigent.presentation.model.ChatMessage
 import com.izhenius.aigent.presentation.model.ChatRole
 import com.izhenius.aigent.presentation.mvi.ChatUiAction
@@ -38,9 +43,19 @@ import com.izhenius.aigent.presentation.viewmodel.ChatViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ChatScreen(viewModel: ChatViewModel = viewModel()) {
+fun ChatScreen(
+    viewModel: ChatViewModel = viewModel(factory = ChatViewModelFactory()),
+) {
     val uiState by viewModel.uiStateFlow.collectAsState()
     var input by rememberSaveable { mutableStateOf("") }
+    val listState = rememberLazyListState()
+
+    LaunchedEffect(uiState.messages.size, uiState.isLoading) {
+        val itemCount = uiState.messages.size + if (uiState.isLoading) 1 else 0
+        if (itemCount > 0) {
+            listState.animateScrollToItem(itemCount - 1)
+        }
+    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -61,6 +76,7 @@ fun ChatScreen(viewModel: ChatViewModel = viewModel()) {
         ) {
 
             LazyColumn(
+                state = listState,
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth(),
@@ -70,6 +86,11 @@ fun ChatScreen(viewModel: ChatViewModel = viewModel()) {
             ) {
                 items(uiState.messages) { message ->
                     MessageBubble(message = message)
+                }
+                if (uiState.isLoading) {
+                    item {
+                        TypingIndicator()
+                    }
                 }
             }
 
@@ -117,9 +138,24 @@ private fun MessageBubble(message: ChatMessage) {
             ),
             modifier = Modifier.fillMaxWidth(0.85f),
         ) {
-            Text(
-                text = message.text, modifier = Modifier.padding(12.dp),
-            )
+            Text(text = message.text, modifier = Modifier.padding(12.dp))
         }
+    }
+}
+
+@Composable
+private fun TypingIndicator() {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Start,
+    ) {
+        Text(
+            text = "Typing...",
+            modifier = Modifier
+                .padding(12.dp)
+                .fillMaxWidth(0.85f),
+            color = Color.Gray,
+            fontStyle = FontStyle.Italic,
+        )
     }
 }

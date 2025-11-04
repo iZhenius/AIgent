@@ -18,6 +18,10 @@ android {
         versionName = "1.0"
 
         vectorDrawables.useSupportLibrary = true
+
+        val apiKey = (project.findProperty("OPENAI_API_KEY") as? String)
+            ?: System.getenv("OPENAI_API_KEY").orEmpty()
+        buildConfigField("String", "OPENAI_API_KEY", "\"$apiKey\"")
     }
 
     buildTypes {
@@ -46,6 +50,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     packaging.resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
@@ -76,4 +81,7 @@ dependencies {
     // ViewModel + Compose integration
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+
+    // Networking
+    implementation(libs.okhttp3)
 }
