@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Simple stylized "A"-like shape using two triangles -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M54,16 L84,92 L24,92 Z"/>
+    <path
+        android:fillColor="#3DDC84"
+        android:pathData="M54,40 L66,72 L42,72 Z"/>
+
+</vector>
