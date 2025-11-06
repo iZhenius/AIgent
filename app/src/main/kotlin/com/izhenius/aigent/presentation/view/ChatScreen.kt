@@ -36,8 +36,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.izhenius.aigent.di.ChatViewModelFactory
-import com.izhenius.aigent.presentation.model.ChatMessage
-import com.izhenius.aigent.presentation.model.ChatRole
+import com.izhenius.aigent.domain.model.ChatMessageEntity
+import com.izhenius.aigent.domain.model.ChatRoleEntity
 import com.izhenius.aigent.presentation.mvi.ChatUiAction
 import com.izhenius.aigent.presentation.viewmodel.ChatViewModel
 
@@ -122,23 +122,36 @@ fun ChatScreen(
 }
 
 @Composable
-private fun MessageBubble(message: ChatMessage) {
-    val isUser = message.role == ChatRole.User
+private fun MessageBubble(message: ChatMessageEntity) {
+    val isUser = message.role == ChatRoleEntity.User
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start,
     ) {
+        val cardColors = CardDefaults.cardColors(
+            containerColor = if (isUser) {
+                CardDefaults.elevatedCardColors().containerColor
+            } else {
+                CardDefaults.cardColors().containerColor
+            },
+        )
         Card(
-            colors = CardDefaults.cardColors(
-                containerColor = if (isUser) {
-                    CardDefaults.elevatedCardColors().containerColor
-                } else {
-                    CardDefaults.cardColors().containerColor
-                },
-            ),
+            colors = cardColors,
             modifier = Modifier.fillMaxWidth(0.85f),
         ) {
-            Text(text = message.text, modifier = Modifier.padding(12.dp))
+            Text(
+                text = message.data.text,
+                modifier = Modifier.padding(12.dp),
+                color = cardColors.contentColor,
+            )
+            if (isUser.not()) {
+                Text(
+                    text = "model: ${message.data.aiModel}, tokens:${message.data.tokens}",
+                    modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
+                    color = cardColors.contentColor.copy(alpha = 0.38f),
+                    fontStyle = FontStyle.Italic,
+                )
+            }
         }
     }
 }
