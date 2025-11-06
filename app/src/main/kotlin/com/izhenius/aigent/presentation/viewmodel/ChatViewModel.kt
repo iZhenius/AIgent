@@ -1,6 +1,7 @@
 package com.izhenius.aigent.presentation.viewmodel
 
 import android.util.Log
+import com.izhenius.aigent.domain.model.AssistantType
 import com.izhenius.aigent.domain.model.ChatMessageDataEntity
 import com.izhenius.aigent.domain.model.ChatMessageEntity
 import com.izhenius.aigent.domain.model.ChatRoleEntity
@@ -16,6 +17,7 @@ class ChatViewModel(
 
     override fun setInitialUiState(): ChatUiState {
         return ChatUiState(
+            assistantType = AssistantType.SPECIALIST,
             messages = emptyList(),
             isLoading = false,
         )
@@ -45,7 +47,10 @@ class ChatViewModel(
             )
             updateUiState { copy(messages = updatedMessages, isLoading = true) }
 
-            val aiMessage = aiRepository.sendInput(updatedMessages)
+            val aiMessage = aiRepository.sendInput(
+                assistantType = uiState.assistantType,
+                input = updatedMessages,
+            )
             updateUiState {
                 copy(
                     messages = updatedMessages + aiMessage,

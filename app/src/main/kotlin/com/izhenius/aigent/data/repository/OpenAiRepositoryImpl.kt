@@ -3,8 +3,11 @@ package com.izhenius.aigent.data.repository
 import android.util.Log
 import com.izhenius.aigent.data.dto.MessageOutputDto
 import com.izhenius.aigent.data.dto.OpenAiResponseDto
+import com.izhenius.aigent.data.mapper.coreInstructions
 import com.izhenius.aigent.data.mapper.toChatMessageEntity
+import com.izhenius.aigent.data.mapper.toInstructions
 import com.izhenius.aigent.data.network.OpenAiApi
+import com.izhenius.aigent.domain.model.AssistantType
 import com.izhenius.aigent.domain.model.ChatMessageEntity
 import com.izhenius.aigent.domain.repository.OpenAiRepository
 import kotlinx.coroutines.Dispatchers
@@ -17,7 +20,10 @@ class OpenAiRepositoryImpl(
     private val api: OpenAiApi,
 ) : OpenAiRepository {
 
-    override suspend fun sendInput(input: List<ChatMessageEntity>): ChatMessageEntity = withContext(Dispatchers.IO) {
+    override suspend fun sendInput(
+        assistantType: AssistantType,
+        input: List<ChatMessageEntity>,
+    ): ChatMessageEntity = withContext(Dispatchers.IO) {
         val inputArray = JSONArray()
         input.forEach { message ->
             val messageObject = JSONObject()
@@ -29,7 +35,7 @@ class OpenAiRepositoryImpl(
         // Build the text format schema
         val textProperty = JSONObject().put("type", "string")
         val aiModelProperty = JSONObject().put("type", "string")
-        val tokensProperty = JSONObject().put("type", "string")
+        val tokensProperty = JSONObject().put("type", "integer")
 
         val properties = JSONObject()
             .put("text", textProperty)
@@ -60,10 +66,7 @@ class OpenAiRepositoryImpl(
             .put("model", "gpt-5-nano")
             .put(
                 "instructions",
-                "You are a helpful assistant from Belarus." +
-                        "You can answer sometimes in belarusian or russian" +
-                        "You should convert responses into the given json schema." +
-                        "property text is your original answer, property ai_model is current chat-gpt model you has used for answer, property tokens is total tokens used for answering",
+                "$coreInstructions\n${assistantType.toInstructions()}",
             )
             .put("input", inputArray)
             .put("text", textObject)
