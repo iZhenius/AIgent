@@ -1,9 +1,10 @@
 package com.izhenius.aigent.presentation.viewmodel
 
 import android.util.Log
+import com.izhenius.aigent.domain.model.ChatMessageDataEntity
+import com.izhenius.aigent.domain.model.ChatMessageEntity
+import com.izhenius.aigent.domain.model.ChatRoleEntity
 import com.izhenius.aigent.domain.repository.OpenAiRepository
-import com.izhenius.aigent.presentation.model.ChatMessage
-import com.izhenius.aigent.presentation.model.ChatRole
 import com.izhenius.aigent.presentation.mvi.ChatUiAction
 import com.izhenius.aigent.presentation.mvi.ChatUiState
 import com.izhenius.aigent.presentation.mvi.MviViewModel
@@ -33,23 +34,24 @@ class ChatViewModel(
                 updateUiState { copy(isLoading = false) }
             },
         ) {
-            updateMessages(ChatRole.User, text)
-            updateUiState { copy(isLoading = true) }
-            val aiText = aiRepository.sendInput(text)
-            updateMessages(ChatRole.Server, aiText)
-            updateUiState { copy(isLoading = false) }
-        }
-    }
-
-    private fun updateMessages(role: ChatRole, text: String) {
-        updateUiState {
-            copy(
-                messages = messages + ChatMessage(
-                    id = System.nanoTime(),
-                    role = role,
+            val updatedMessages = uiState.messages + ChatMessageEntity(
+                id = System.nanoTime().toString(),
+                role = ChatRoleEntity.User,
+                data = ChatMessageDataEntity(
                     text = text,
+                    aiModel = "",
+                    tokens = "",
                 ),
             )
+            updateUiState { copy(messages = updatedMessages, isLoading = true) }
+
+            val aiMessage = aiRepository.sendInput(updatedMessages)
+            updateUiState {
+                copy(
+                    messages = updatedMessages + aiMessage,
+                    isLoading = false,
+                )
+            }
         }
     }
 }

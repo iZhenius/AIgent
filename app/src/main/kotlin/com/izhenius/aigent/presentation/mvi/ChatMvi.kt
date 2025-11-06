@@ -1,13 +1,13 @@
 package com.izhenius.aigent.presentation.mvi
 
-import com.izhenius.aigent.presentation.model.ChatMessage
+import com.izhenius.aigent.domain.model.ChatMessageEntity
 
 data class ChatUiState(
-    val messages: List<ChatMessage>,
+    val messages: List<ChatMessageEntity>,
     val isLoading: Boolean = false,
 )
 
 sealed interface ChatUiAction {
 
-    data class OnSendMessage(val text: String): ChatUiAction
+    data class OnSendMessage(val text: String) : ChatUiAction
 }
