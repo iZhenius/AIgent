@@ -1,13 +1,12 @@
 package com.izhenius.aigent.presentation.view
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -58,7 +57,6 @@ fun ChatScreen(
     }
 
     Scaffold(
-        modifier = Modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
                 title = {
@@ -68,36 +66,11 @@ fun ChatScreen(
                 },
             )
         },
-    ) { paddings ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddings),
-        ) {
-
-            LazyColumn(
-                state = listState,
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                reverseLayout = false,
-                contentPadding = PaddingValues(16.dp),
-            ) {
-                items(uiState.messages) { message ->
-                    MessageBubble(message = message)
-                }
-                if (uiState.isLoading) {
-                    item {
-                        TypingIndicator()
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
+        bottomBar = {
             Row(
-                modifier = Modifier.padding(16.dp),
+                modifier = Modifier
+                    .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 24.dp)
+                    .imePadding(),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 OutlinedTextField(
@@ -116,6 +89,25 @@ fun ChatScreen(
                         }
                     },
                 ) { Text(text = "Send") }
+            }
+        },
+    ) { paddings ->
+        LazyColumn(
+            state = listState,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddings),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            reverseLayout = false,
+            contentPadding = PaddingValues(16.dp),
+        ) {
+            items(uiState.messages) { message ->
+                MessageBubble(message = message)
+            }
+            if (uiState.isLoading) {
+                item {
+                    TypingIndicator()
+                }
             }
         }
     }
