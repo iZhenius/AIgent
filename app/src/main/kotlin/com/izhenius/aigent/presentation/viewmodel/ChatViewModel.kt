@@ -17,8 +17,9 @@ class ChatViewModel(
 
     override fun setInitialUiState(): ChatUiState {
         return ChatUiState(
-            assistantType = AssistantType.SPECIALIST,
-            messages = emptyList(),
+            assistantType = AssistantType.BUDDY,
+            messages = emptyMap(),
+            currentMessages = emptyList(),
             isLoading = false,
         )
     }
@@ -26,6 +27,28 @@ class ChatViewModel(
     override fun onUiAction(uiAction: ChatUiAction) {
         when (uiAction) {
             is ChatUiAction.OnSendMessage -> sendMessage(uiAction.text)
+            is ChatUiAction.OnChangeAssistantType -> updateAssistantType(uiAction.assistantType)
+            is ChatUiAction.OnClearChat -> clearChat()
+        }
+    }
+
+    private fun updateAssistantType(assistantType: AssistantType) {
+        updateUiState {
+            copy(
+                assistantType = assistantType,
+                currentMessages = messages[assistantType].orEmpty(),
+            )
+        }
+    }
+
+    private fun clearChat() {
+        updateUiState {
+            val updatedMessages = messages - assistantType
+            copy(
+                messages = updatedMessages,
+                currentMessages = updatedMessages[assistantType].orEmpty(),
+                isLoading = false,
+            )
         }
     }
 
@@ -36,7 +59,10 @@ class ChatViewModel(
                 updateUiState { copy(isLoading = false) }
             },
         ) {
-            val updatedMessages = uiState.messages + ChatMessageEntity(
+            val currentAssistantType = uiState.assistantType
+            val currentMessages = uiState.messages[currentAssistantType].orEmpty()
+
+            val userMessage = ChatMessageEntity(
                 id = System.nanoTime().toString(),
                 role = ChatRoleEntity.User,
                 data = ChatMessageDataEntity(
@@ -45,15 +71,28 @@ class ChatViewModel(
                     tokens = "",
                 ),
             )
-            updateUiState { copy(messages = updatedMessages, isLoading = true) }
+            val updatedMessages = currentMessages + userMessage
+
+            updateUiState {
+                val updatedMessagesMap = messages + (currentAssistantType to updatedMessages)
+                copy(
+                    messages = updatedMessagesMap,
+                    currentMessages = updatedMessagesMap[currentAssistantType].orEmpty(),
+                    isLoading = true,
+                )
+            }
 
             val aiMessage = aiRepository.sendInput(
-                assistantType = uiState.assistantType,
+                assistantType = currentAssistantType,
                 input = updatedMessages,
             )
+            val finalMessages = updatedMessages + aiMessage
+
             updateUiState {
+                val finalMessagesMap = messages + (currentAssistantType to finalMessages)
                 copy(
-                    messages = updatedMessages + aiMessage,
+                    messages = finalMessagesMap,
+                    currentMessages = finalMessagesMap[currentAssistantType].orEmpty(),
                     isLoading = false,
                 )
             }
