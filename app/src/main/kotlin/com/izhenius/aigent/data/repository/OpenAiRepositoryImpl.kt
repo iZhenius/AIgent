@@ -7,6 +7,8 @@ import com.izhenius.aigent.data.mapper.coreInstructions
 import com.izhenius.aigent.data.mapper.toChatMessageEntity
 import com.izhenius.aigent.data.mapper.toInstructions
 import com.izhenius.aigent.data.network.OpenAiApi
+import com.izhenius.aigent.domain.model.AiModelEntity
+import com.izhenius.aigent.domain.model.AiTemperatureEntity
 import com.izhenius.aigent.domain.model.AssistantType
 import com.izhenius.aigent.domain.model.ChatMessageEntity
 import com.izhenius.aigent.domain.repository.OpenAiRepository
@@ -23,6 +25,8 @@ class OpenAiRepositoryImpl(
     override suspend fun sendInput(
         assistantType: AssistantType,
         input: List<ChatMessageEntity>,
+        aiModel: AiModelEntity,
+        aiTemperature: AiTemperatureEntity,
     ): ChatMessageEntity = withContext(Dispatchers.IO) {
         val inputArray = JSONArray()
         input.forEach { message ->
@@ -61,15 +65,20 @@ class OpenAiRepositoryImpl(
 
         val textObject = JSONObject()
             .put("format", format)
+            .put("verbosity", aiTemperature.textVerbosity)
+
+        val reasoningObject = JSONObject()
+            .put("effort", aiTemperature.reasoningEffort)
 
         val bodyJson = JSONObject()
-            .put("model", "gpt-5-nano")
+            .put("model", aiModel.apiValue)
             .put(
                 "instructions",
                 "$coreInstructions\n${assistantType.toInstructions()}",
             )
             .put("input", inputArray)
             .put("text", textObject)
+            .put("reasoning", reasoningObject)
             .toString()
 
         val request = api.buildRequest(bodyJson)
