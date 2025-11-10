@@ -1,6 +1,7 @@
 package com.izhenius.aigent.presentation.view
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -26,11 +27,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -42,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.izhenius.aigent.R
 import com.izhenius.aigent.di.ChatViewModelFactory
+import com.izhenius.aigent.domain.model.AiTemperatureEntity
 import com.izhenius.aigent.domain.model.AssistantType
 import com.izhenius.aigent.domain.model.ChatMessageEntity
 import com.izhenius.aigent.domain.model.ChatRoleEntity
@@ -54,7 +56,7 @@ fun ChatScreen(
     viewModel: ChatViewModel = viewModel(factory = ChatViewModelFactory()),
 ) {
     val uiState by viewModel.uiStateFlow.collectAsState()
-    var input by rememberSaveable { mutableStateOf("") }
+    val input = rememberSaveable { mutableStateOf("") }
     val listState = rememberLazyListState()
 
     LaunchedEffect(uiState.currentMessages.size, uiState.isLoading, uiState.assistantType) {
@@ -66,95 +68,10 @@ fun ChatScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        )
-                        {
-                            Text(
-                                text = "Chat",
-                                textAlign = TextAlign.Center,
-                            )
-                            IconButton(
-                                onClick = {
-                                    viewModel.onUiAction(ChatUiAction.OnClearChat)
-                                },
-                            ) {
-                                Icon(
-                                    imageVector = ImageVector.vectorResource(R.drawable.delete_forever_24px),
-                                    contentDescription = "Clear chat",
-                                )
-                            }
-                        }
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            FilterChip(
-                                selected = uiState.assistantType == AssistantType.BUDDY,
-                                onClick = {
-                                    viewModel.onUiAction(
-                                        ChatUiAction.OnChangeAssistantType(AssistantType.BUDDY),
-                                    )
-                                },
-                                label = { Text("Buddy") },
-                            )
-                            FilterChip(
-                                selected = uiState.assistantType == AssistantType.SPECIALIST,
-                                onClick = {
-                                    viewModel.onUiAction(
-                                        ChatUiAction.OnChangeAssistantType(AssistantType.SPECIALIST),
-                                    )
-                                },
-                                label = { Text("Specialist") },
-                            )
-                            FilterChip(
-                                selected = uiState.assistantType == AssistantType.EXPERTS,
-                                onClick = {
-                                    viewModel.onUiAction(
-                                        ChatUiAction.OnChangeAssistantType(AssistantType.EXPERTS),
-                                    )
-                                },
-                                label = { Text("Experts") },
-                            )
-                        }
-                    }
-                },
-            )
+            TopAppBarContent(uiState.assistantType, viewModel::onUiAction)
         },
         bottomBar = {
-            Row(
-                modifier = Modifier
-                    .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 24.dp)
-                    .imePadding(),
-                verticalAlignment = Alignment.Bottom,
-            ) {
-                OutlinedTextField(
-                    value = input,
-                    onValueChange = { input = it },
-                    modifier = Modifier.weight(1f),
-                    placeholder = { Text(text = "Type a message…") },
-                )
-                Spacer(modifier = Modifier.size(8.dp))
-                Button(
-                    onClick = {
-                        val text = input.trim()
-                        if (text.isNotEmpty()) {
-                            viewModel.onUiAction(ChatUiAction.OnSendMessage(text))
-                            input = ""
-                        }
-                    },
-                ) { Text(text = "Send") }
-            }
+            BottomBarContent(input, uiState.aiTemperature, viewModel::onUiAction)
         },
     ) { paddings ->
         LazyColumn(
@@ -174,6 +91,149 @@ fun ChatScreen(
                     TypingIndicator()
                 }
             }
+        }
+    }
+}
+
+@ExperimentalMaterial3Api
+@Composable
+private fun TopAppBarContent(
+    assistantType: AssistantType,
+    onUiAction: (ChatUiAction) -> Unit,
+) {
+    TopAppBar(
+        title = {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                )
+                {
+                    Text(
+                        text = "Chat",
+                        textAlign = TextAlign.Center,
+                    )
+                    IconButton(
+                        onClick = {
+                            onUiAction(ChatUiAction.OnClearChat)
+                        },
+                    ) {
+                        Icon(
+                            imageVector = ImageVector.vectorResource(R.drawable.delete_forever_24px),
+                            contentDescription = "Clear chat",
+                        )
+                    }
+                }
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    FilterChip(
+                        selected = assistantType == AssistantType.BUDDY,
+                        onClick = {
+                            onUiAction(
+                                ChatUiAction.OnChangeAssistantType(AssistantType.BUDDY),
+                            )
+                        },
+                        label = { Text("Buddy") },
+                    )
+                    FilterChip(
+                        selected = assistantType == AssistantType.SPECIALIST,
+                        onClick = {
+                            onUiAction(
+                                ChatUiAction.OnChangeAssistantType(AssistantType.SPECIALIST),
+                            )
+                        },
+                        label = { Text("Specialist") },
+                    )
+                    FilterChip(
+                        selected = assistantType == AssistantType.EXPERTS,
+                        onClick = {
+                            onUiAction(
+                                ChatUiAction.OnChangeAssistantType(AssistantType.EXPERTS),
+                            )
+                        },
+                        label = { Text("Experts") },
+                    )
+                }
+            }
+        },
+    )
+}
+
+@Composable
+private fun BottomBarContent(
+    input: MutableState<String>,
+    aiTemperature: AiTemperatureEntity,
+    onUiAction: (ChatUiAction) -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .padding(top = 16.dp, bottom = 32.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(text = "Temperature:")
+            FilterChip(
+                selected = aiTemperature == AiTemperatureEntity.LOW,
+                onClick = {
+                    onUiAction(
+                        ChatUiAction.OnChangeTemperatureLevel(AiTemperatureEntity.LOW),
+                    )
+                },
+                label = { Text("Low") },
+            )
+            FilterChip(
+                selected = aiTemperature == AiTemperatureEntity.MEDIUM,
+                onClick = {
+                    onUiAction(
+                        ChatUiAction.OnChangeTemperatureLevel(AiTemperatureEntity.MEDIUM),
+                    )
+                },
+                label = { Text("Medium") },
+            )
+            FilterChip(
+                selected = aiTemperature == AiTemperatureEntity.HIGH,
+                onClick = {
+                    onUiAction(
+                        ChatUiAction.OnChangeTemperatureLevel(AiTemperatureEntity.HIGH),
+                    )
+                },
+                label = { Text("High") },
+            )
+        }
+        Row(
+            modifier = Modifier
+                .padding(horizontal = 16.dp)
+                .imePadding(),
+            verticalAlignment = Alignment.Bottom,
+        ) {
+            OutlinedTextField(
+                value = input.value,
+                onValueChange = { input.value = it },
+                modifier = Modifier.weight(1f),
+                placeholder = { Text(text = "Type a message…") },
+            )
+            Spacer(modifier = Modifier.size(8.dp))
+            Button(
+                onClick = {
+                    val text = input.value.trim()
+                    if (text.isNotEmpty()) {
+                        onUiAction(ChatUiAction.OnSendMessage(text))
+                        input.value = ""
+                    }
+                },
+            ) { Text(text = "Send") }
         }
     }
 }

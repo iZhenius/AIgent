@@ -1,6 +1,8 @@
 package com.izhenius.aigent.presentation.viewmodel
 
 import android.util.Log
+import com.izhenius.aigent.domain.model.AiModelEntity
+import com.izhenius.aigent.domain.model.AiTemperatureEntity
 import com.izhenius.aigent.domain.model.AssistantType
 import com.izhenius.aigent.domain.model.ChatMessageDataEntity
 import com.izhenius.aigent.domain.model.ChatMessageEntity
@@ -21,6 +23,8 @@ class ChatViewModel(
             messages = emptyMap(),
             currentMessages = emptyList(),
             isLoading = false,
+            aiTemperature = AiTemperatureEntity.MEDIUM,
+            aiModel = AiModelEntity.GPT_5_MINI,
         )
     }
 
@@ -28,6 +32,8 @@ class ChatViewModel(
         when (uiAction) {
             is ChatUiAction.OnSendMessage -> sendMessage(uiAction.text)
             is ChatUiAction.OnChangeAssistantType -> updateAssistantType(uiAction.assistantType)
+            is ChatUiAction.OnChangeTemperatureLevel -> updateTemperatureLevel(uiAction.aiTemperature)
+            is ChatUiAction.OnChangeModel -> updateModel(uiAction.aiModel)
             is ChatUiAction.OnClearChat -> clearChat()
         }
     }
@@ -38,6 +44,18 @@ class ChatViewModel(
                 assistantType = assistantType,
                 currentMessages = messages[assistantType].orEmpty(),
             )
+        }
+    }
+
+    private fun updateTemperatureLevel(aiTemperature: AiTemperatureEntity) {
+        updateUiState {
+            copy(aiTemperature = aiTemperature)
+        }
+    }
+
+    private fun updateModel(aiModel: AiModelEntity) {
+        updateUiState {
+            copy(aiModel = aiModel)
         }
     }
 
@@ -85,6 +103,8 @@ class ChatViewModel(
             val aiMessage = aiRepository.sendInput(
                 assistantType = currentAssistantType,
                 input = updatedMessages,
+                aiModel = uiState.aiModel,
+                aiTemperature = uiState.aiTemperature,
             )
             val finalMessages = updatedMessages + aiMessage
 
