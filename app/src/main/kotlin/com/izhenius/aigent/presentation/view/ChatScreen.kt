@@ -12,10 +12,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -30,11 +34,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.izhenius.aigent.R
 import com.izhenius.aigent.di.ChatViewModelFactory
+import com.izhenius.aigent.domain.model.AssistantType
 import com.izhenius.aigent.domain.model.ChatMessageEntity
 import com.izhenius.aigent.domain.model.ChatRoleEntity
 import com.izhenius.aigent.presentation.mvi.ChatUiAction
@@ -49,8 +57,8 @@ fun ChatScreen(
     var input by rememberSaveable { mutableStateOf("") }
     val listState = rememberLazyListState()
 
-    LaunchedEffect(uiState.messages.size, uiState.isLoading) {
-        val itemCount = uiState.messages.size + if (uiState.isLoading) 1 else 0
+    LaunchedEffect(uiState.currentMessages.size, uiState.isLoading, uiState.assistantType) {
+        val itemCount = uiState.currentMessages.size + if (uiState.isLoading) 1 else 0
         if (itemCount > 0) {
             listState.animateScrollToItem(itemCount - 1)
         }
@@ -60,9 +68,66 @@ fun ChatScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        text = "Chat", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center,
-                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        )
+                        {
+                            Text(
+                                text = "Chat",
+                                textAlign = TextAlign.Center,
+                            )
+                            IconButton(
+                                onClick = {
+                                    viewModel.onUiAction(ChatUiAction.OnClearChat)
+                                },
+                            ) {
+                                Icon(
+                                    imageVector = ImageVector.vectorResource(R.drawable.delete_forever_24px),
+                                    contentDescription = "Clear chat",
+                                )
+                            }
+                        }
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            FilterChip(
+                                selected = uiState.assistantType == AssistantType.BUDDY,
+                                onClick = {
+                                    viewModel.onUiAction(
+                                        ChatUiAction.OnChangeAssistantType(AssistantType.BUDDY),
+                                    )
+                                },
+                                label = { Text("Buddy") },
+                            )
+                            FilterChip(
+                                selected = uiState.assistantType == AssistantType.SPECIALIST,
+                                onClick = {
+                                    viewModel.onUiAction(
+                                        ChatUiAction.OnChangeAssistantType(AssistantType.SPECIALIST),
+                                    )
+                                },
+                                label = { Text("Specialist") },
+                            )
+                            FilterChip(
+                                selected = uiState.assistantType == AssistantType.EXPERTS,
+                                onClick = {
+                                    viewModel.onUiAction(
+                                        ChatUiAction.OnChangeAssistantType(AssistantType.EXPERTS),
+                                    )
+                                },
+                                label = { Text("Experts") },
+                            )
+                        }
+                    }
                 },
             )
         },
@@ -71,7 +136,7 @@ fun ChatScreen(
                 modifier = Modifier
                     .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 24.dp)
                     .imePadding(),
-                verticalAlignment = Alignment.CenterVertically,
+                verticalAlignment = Alignment.Bottom,
             ) {
                 OutlinedTextField(
                     value = input,
@@ -101,7 +166,7 @@ fun ChatScreen(
             reverseLayout = false,
             contentPadding = PaddingValues(16.dp),
         ) {
-            items(uiState.messages) { message ->
+            items(uiState.currentMessages) { message ->
                 MessageBubble(message = message)
             }
             if (uiState.isLoading) {
@@ -132,16 +197,20 @@ private fun MessageBubble(message: ChatMessageEntity) {
             modifier = Modifier.fillMaxWidth(0.85f),
         ) {
             Text(
-                text = message.data.text,
-                modifier = Modifier.padding(12.dp),
-                color = cardColors.contentColor,
+                text = if (isUser) {
+                    "YOU"
+                } else {
+                    "${message.data.aiModel.uppercase()} (tokens:${message.data.tokens})"
+                },
+                modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 12.dp),
+                color = cardColors.contentColor.copy(alpha = 0.38f),
+                fontStyle = FontStyle.Italic,
             )
-            if (isUser.not()) {
+            SelectionContainer {
                 Text(
-                    text = "model: ${message.data.aiModel}, tokens:${message.data.tokens}",
-                    modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
-                    color = cardColors.contentColor.copy(alpha = 0.38f),
-                    fontStyle = FontStyle.Italic,
+                    text = message.data.text,
+                    modifier = Modifier.padding(12.dp),
+                    color = cardColors.contentColor,
                 )
             }
         }

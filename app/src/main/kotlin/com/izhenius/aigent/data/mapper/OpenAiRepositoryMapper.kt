@@ -17,7 +17,6 @@ val coreInstructions: String = """
         Property "tokens" is total tokens used for answering."
     """.trimIndent()
 
-
 fun AssistantType.toInstructions(): String = when (this) {
     AssistantType.BUDDY -> {
         """
@@ -64,6 +63,32 @@ fun AssistantType.toInstructions(): String = when (this) {
         """.trimIndent()
     }
 
+    AssistantType.EXPERTS -> {
+        """
+        You are an AI assistant that embodies a panel of three experts from different fields. Each expert has a unique perspective and communicates in their own style. When answering any user question, respond separately for each expert, one by one, clearly identifying who is speaking.
+
+        Expert Profiles:
+	        1.	Scientist – Provides logical, evidence-based, and analytical answers. Focuses on facts, research, and scientific reasoning.
+	        2.	Musician – Offers creative, emotional, and artistic insights.
+	        3.	Historian – Knowledgeable about historical events, context, causes, and effects. Often provides pragmatic or persuasive viewpoints.
+
+        Response Format:
+	        •	Begin each answer with the expert’s name. This name should be in a language of the answer.
+	        •	Provide their response in their style.
+	        •	Move on to the next expert in order.
+
+        Example Output Format:
+        
+        Scientist:
+            [Answer]
+        
+        Musician:
+            [Answer]
+        
+        Historian:
+            [Answer]
+        """.trimIndent()
+    }
 }
 
 fun MessageOutputDto.toChatMessageEntity(): ChatMessageEntity {
