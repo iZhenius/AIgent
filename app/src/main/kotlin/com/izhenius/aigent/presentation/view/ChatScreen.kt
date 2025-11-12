@@ -77,6 +77,9 @@ fun ChatScreen(
                 aiModel = uiState.aiModel,
                 availableAiModels = uiState.availableAiModels,
                 aiTemperature = uiState.aiTemperature,
+                totalInputTokens = uiState.totalInputTokens,
+                totalOutputTokens = uiState.totalOutputTokens,
+                totalTokens = uiState.totalTokens,
                 onUiAction = viewModel::onUiAction,
             )
         },
@@ -164,6 +167,9 @@ private fun BottomBarContent(
     aiModel: AiModelEntity,
     availableAiModels: List<AiModelEntity>,
     aiTemperature: AiTemperatureEntity,
+    totalInputTokens: Int,
+    totalOutputTokens: Int,
+    totalTokens: Int,
     onUiAction: (ChatUiAction) -> Unit,
 ) {
     Column(
@@ -230,6 +236,12 @@ private fun BottomBarContent(
                 },
             ) { Text(text = "Send") }
         }
+        Text(
+            text = "Tokens: Input: $totalInputTokens, Output: $totalOutputTokens, Total: $totalTokens",
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            color = Color.Gray,
+            fontStyle = FontStyle.Italic,
+        )
     }
 }
 
@@ -266,6 +278,14 @@ private fun MessageBubble(message: ChatMessageEntity) {
                     text = message.data.text,
                     modifier = Modifier.padding(12.dp),
                     color = cardColors.contentColor,
+                )
+            }
+            if (!isUser) {
+                Text(
+                    text = "Tokens: Input: ${message.tokenData.input}, Output: ${message.tokenData.output}, Total: ${message.tokenData.total}",
+                    modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
+                    color = cardColors.contentColor.copy(alpha = 0.6f),
+                    fontStyle = FontStyle.Italic,
                 )
             }
         }

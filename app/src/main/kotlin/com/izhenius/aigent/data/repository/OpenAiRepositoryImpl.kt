@@ -94,7 +94,7 @@ class OpenAiRepositoryImpl(
                 .firstOrNull()
                 ?: throw IllegalStateException("No MessageOutputDto found in OpenAI response")
 
-            return@withContext messageOutput.toChatMessageEntity()
+            return@withContext messageOutput.toChatMessageEntity(responseDto.usage)
         }
     }
 }

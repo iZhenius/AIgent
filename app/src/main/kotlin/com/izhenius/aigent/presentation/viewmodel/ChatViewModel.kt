@@ -7,17 +7,21 @@ import com.izhenius.aigent.domain.model.AssistantType
 import com.izhenius.aigent.domain.model.ChatMessageDataEntity
 import com.izhenius.aigent.domain.model.ChatMessageEntity
 import com.izhenius.aigent.domain.model.ChatRoleEntity
+import com.izhenius.aigent.domain.model.TokenDataEntity
 import com.izhenius.aigent.domain.repository.HFRepository
 import com.izhenius.aigent.domain.repository.OpenAiRepository
 import com.izhenius.aigent.presentation.mvi.ChatUiAction
 import com.izhenius.aigent.presentation.mvi.ChatUiState
 import com.izhenius.aigent.presentation.mvi.MviViewModel
 import com.izhenius.aigent.util.launch
+import kotlinx.coroutines.Job
 
 class ChatViewModel(
     private val openAiRepository: OpenAiRepository,
     private val hfRepository: HFRepository,
 ) : MviViewModel<ChatUiState, ChatUiAction>() {
+
+    private var sendMessageJob: Job? = null
 
     override fun setInitialUiState(): ChatUiState {
         return ChatUiState(
@@ -45,11 +49,24 @@ class ChatViewModel(
         }
     }
 
+    private fun calculateTokenTotals(messages: List<ChatMessageEntity>): Triple<Int, Int, Int> {
+        val assistantMessages = messages.filter { it.role == ChatRoleEntity.Assistant }
+        val totalInput = assistantMessages.sumOf { it.tokenData.input }
+        val totalOutput = assistantMessages.sumOf { it.tokenData.output }
+        val total = assistantMessages.sumOf { it.tokenData.total }
+        return Triple(totalInput, totalOutput, total)
+    }
+
     private fun updateAssistantType(assistantType: AssistantType) {
         updateUiState {
+            val currentMessages = messages[assistantType].orEmpty()
+            val (totalInput, totalOutput, total) = calculateTokenTotals(currentMessages)
             copy(
                 assistantType = assistantType,
-                currentMessages = messages[assistantType].orEmpty(),
+                currentMessages = currentMessages,
+                totalInputTokens = totalInput,
+                totalOutputTokens = totalOutput,
+                totalTokens = total,
             )
         }
     }
@@ -69,16 +86,22 @@ class ChatViewModel(
     private fun clearChat() {
         updateUiState {
             val updatedMessages = messages - assistantType
+            val currentMessages = updatedMessages[assistantType].orEmpty()
+            val (totalInput, totalOutput, total) = calculateTokenTotals(currentMessages)
             copy(
                 messages = updatedMessages,
-                currentMessages = updatedMessages[assistantType].orEmpty(),
+                currentMessages = currentMessages,
                 isLoading = false,
+                totalInputTokens = totalInput,
+                totalOutputTokens = totalOutput,
+                totalTokens = total,
             )
         }
     }
 
     private fun sendMessage(text: String) {
-        launch(
+        sendMessageJob?.cancel()
+        sendMessageJob = launch(
             onError = {
                 Log.e("OpenAiRepository", it.stackTraceToString())
                 updateUiState { copy(isLoading = false) }
@@ -94,15 +117,25 @@ class ChatViewModel(
                     text = text,
                     aiModel = "",
                 ),
+                tokenData = TokenDataEntity(
+                    input = 0,
+                    output = 0,
+                    total = 0,
+                ),
             )
             val updatedMessages = currentMessages + userMessage
 
             updateUiState {
                 val updatedMessagesMap = messages + (currentAssistantType to updatedMessages)
+                val currentMessages = updatedMessagesMap[currentAssistantType].orEmpty()
+                val (totalInput, totalOutput, total) = calculateTokenTotals(currentMessages)
                 copy(
                     messages = updatedMessagesMap,
-                    currentMessages = updatedMessagesMap[currentAssistantType].orEmpty(),
+                    currentMessages = currentMessages,
                     isLoading = true,
+                    totalInputTokens = totalInput,
+                    totalOutputTokens = totalOutput,
+                    totalTokens = total,
                 )
             }
 
@@ -135,10 +168,15 @@ class ChatViewModel(
 
             updateUiState {
                 val finalMessagesMap = messages + (currentAssistantType to finalMessages)
+                val finalMessages = finalMessagesMap[currentAssistantType].orEmpty()
+                val (totalInput, totalOutput, total) = calculateTokenTotals(finalMessages)
                 copy(
                     messages = finalMessagesMap,
-                    currentMessages = finalMessagesMap[currentAssistantType].orEmpty(),
+                    currentMessages = finalMessages,
                     isLoading = false,
+                    totalInputTokens = totalInput,
+                    totalOutputTokens = totalOutput,
+                    totalTokens = total,
                 )
             }
         }

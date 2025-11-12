@@ -96,7 +96,7 @@ class HFRepositoryImpl(
                 .firstOrNull()
                 ?: throw IllegalStateException("No MessageOutputDto found in HF response")
 
-            return@withContext messageOutput.toChatMessageEntity()
+            return@withContext messageOutput.toChatMessageEntity(responseDto.usage)
         }
     }
 }
