@@ -12,6 +12,7 @@ data class ChatUiState(
     val isLoading: Boolean,
     val aiTemperature: AiTemperatureEntity,
     val aiModel: AiModelEntity,
+    val availableAiModels: List<AiModelEntity>,
 )
 
 sealed interface ChatUiAction {

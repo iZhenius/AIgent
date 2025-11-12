@@ -40,17 +40,14 @@ class HFRepositoryImpl(
         // Build the same json_schema "chat_message" as used in OpenAiRepositoryImpl
         val textProperty = JSONObject().put("type", "string")
         val aiModelProperty = JSONObject().put("type", "string")
-        val tokensProperty = JSONObject().put("type", "integer")
 
         val properties = JSONObject()
             .put("text", textProperty)
             .put("ai_model", aiModelProperty)
-            .put("tokens", tokensProperty)
 
         val requiredArray = JSONArray()
             .put("text")
             .put("ai_model")
-            .put("tokens")
 
         val schema = JSONObject()
             .put("type", "object")

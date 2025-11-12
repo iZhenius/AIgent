@@ -26,7 +26,12 @@ class ChatViewModel(
             currentMessages = emptyList(),
             isLoading = false,
             aiTemperature = AiTemperatureEntity.MEDIUM,
-            aiModel = AiModelEntity.DEEP_SEEK,
+            aiModel = AiModelEntity.GPT_5_MINI,
+            availableAiModels = listOf(
+                AiModelEntity.GPT_5,
+                AiModelEntity.GPT_5_MINI,
+                AiModelEntity.GPT_5_NANO,
+            ),
         )
     }
 
@@ -88,7 +93,6 @@ class ChatViewModel(
                 data = ChatMessageDataEntity(
                     text = text,
                     aiModel = "",
-                    tokens = "",
                 ),
             )
             val updatedMessages = currentMessages + userMessage
