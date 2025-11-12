@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.izhenius.aigent.R
 import com.izhenius.aigent.di.ChatViewModelFactory
+import com.izhenius.aigent.domain.model.AiModelEntity
 import com.izhenius.aigent.domain.model.AiTemperatureEntity
 import com.izhenius.aigent.domain.model.AssistantType
 import com.izhenius.aigent.domain.model.ChatMessageEntity
@@ -71,7 +72,7 @@ fun ChatScreen(
             TopAppBarContent(uiState.assistantType, viewModel::onUiAction)
         },
         bottomBar = {
-            BottomBarContent(input, uiState.aiTemperature, viewModel::onUiAction)
+            BottomBarContent(input, uiState.aiModel, uiState.aiTemperature, viewModel::onUiAction)
         },
     ) { paddings ->
         LazyColumn(
@@ -170,6 +171,7 @@ private fun TopAppBarContent(
 @Composable
 private fun BottomBarContent(
     input: MutableState<String>,
+    aiModel: AiModelEntity,
     aiTemperature: AiTemperatureEntity,
     onUiAction: (ChatUiAction) -> Unit,
 ) {
@@ -178,6 +180,40 @@ private fun BottomBarContent(
             .padding(top = 16.dp, bottom = 32.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
     ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(text = "Model:")
+            FilterChip(
+                selected = aiModel == AiModelEntity.ZAI_ORG,
+                onClick = {
+                    onUiAction(
+                        ChatUiAction.OnChangeModel(AiModelEntity.ZAI_ORG),
+                    )
+                },
+                label = { Text(AiModelEntity.ZAI_ORG.name) },
+            )
+            FilterChip(
+                selected = aiModel == AiModelEntity.DEEP_SEEK,
+                onClick = {
+                    onUiAction(
+                        ChatUiAction.OnChangeModel(AiModelEntity.DEEP_SEEK),
+                    )
+                },
+                label = { Text(AiModelEntity.DEEP_SEEK.name) },
+            )
+            FilterChip(
+                selected = aiModel == AiModelEntity.KIMI_K2,
+                onClick = {
+                    onUiAction(
+                        ChatUiAction.OnChangeModel(AiModelEntity.KIMI_K2),
+                    )
+                },
+                label = { Text(AiModelEntity.KIMI_K2.name) },
+            )
+        }
         Row(
             modifier = Modifier.padding(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),

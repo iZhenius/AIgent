@@ -7,6 +7,7 @@ import com.izhenius.aigent.domain.model.AssistantType
 import com.izhenius.aigent.domain.model.ChatMessageDataEntity
 import com.izhenius.aigent.domain.model.ChatMessageEntity
 import com.izhenius.aigent.domain.model.ChatRoleEntity
+import com.izhenius.aigent.domain.repository.HFRepository
 import com.izhenius.aigent.domain.repository.OpenAiRepository
 import com.izhenius.aigent.presentation.mvi.ChatUiAction
 import com.izhenius.aigent.presentation.mvi.ChatUiState
@@ -14,7 +15,8 @@ import com.izhenius.aigent.presentation.mvi.MviViewModel
 import com.izhenius.aigent.util.launch
 
 class ChatViewModel(
-    private val aiRepository: OpenAiRepository,
+    private val openAiRepository: OpenAiRepository,
+    private val hfRepository: HFRepository,
 ) : MviViewModel<ChatUiState, ChatUiAction>() {
 
     override fun setInitialUiState(): ChatUiState {
@@ -24,7 +26,7 @@ class ChatViewModel(
             currentMessages = emptyList(),
             isLoading = false,
             aiTemperature = AiTemperatureEntity.MEDIUM,
-            aiModel = AiModelEntity.GPT_5_MINI,
+            aiModel = AiModelEntity.DEEP_SEEK,
         )
     }
 
@@ -100,12 +102,31 @@ class ChatViewModel(
                 )
             }
 
-            val aiMessage = aiRepository.sendInput(
-                assistantType = currentAssistantType,
-                input = updatedMessages,
-                aiModel = uiState.aiModel,
-                aiTemperature = uiState.aiTemperature,
-            )
+            val aiMessage = when (uiState.aiModel) {
+                AiModelEntity.GPT_5,
+                AiModelEntity.GPT_5_MINI,
+                AiModelEntity.GPT_5_NANO,
+                    -> {
+                    openAiRepository.sendInput(
+                        assistantType = currentAssistantType,
+                        input = updatedMessages,
+                        aiModel = uiState.aiModel,
+                        aiTemperature = uiState.aiTemperature,
+                    )
+                }
+
+                AiModelEntity.ZAI_ORG,
+                AiModelEntity.DEEP_SEEK,
+                AiModelEntity.KIMI_K2,
+                    -> {
+                    hfRepository.sendInput(
+                        assistantType = currentAssistantType,
+                        input = updatedMessages,
+                        aiModel = uiState.aiModel,
+                        aiTemperature = uiState.aiTemperature,
+                    )
+                }
+            }
             val finalMessages = updatedMessages + aiMessage
 
             updateUiState {

@@ -19,9 +19,13 @@ android {
 
         vectorDrawables.useSupportLibrary = true
 
-        val apiKey = (project.findProperty("OPENAI_API_KEY") as? String)
+        val openAiApiKey = (project.findProperty("OPENAI_API_KEY") as? String)
             ?: System.getenv("OPENAI_API_KEY").orEmpty()
-        buildConfigField("String", "OPENAI_API_KEY", "\"$apiKey\"")
+        buildConfigField("String", "OPENAI_API_KEY", "\"$openAiApiKey\"")
+
+        val hfApiKey = (project.findProperty("HF_API_KEY") as? String)
+            ?: System.getenv("HF_API_KEY_2").orEmpty()
+        buildConfigField("String", "HF_API_KEY", "\"$hfApiKey\"")
     }
 
     buildTypes {
