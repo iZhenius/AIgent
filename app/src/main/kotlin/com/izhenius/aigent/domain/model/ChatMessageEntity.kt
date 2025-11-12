@@ -4,4 +4,5 @@ data class ChatMessageEntity(
     val id: String,
     val role: ChatRoleEntity,
     val data: ChatMessageDataEntity,
+    val tokenData: TokenDataEntity,
 )

@@ -2,10 +2,12 @@ package com.izhenius.aigent.data.mapper
 
 import com.izhenius.aigent.data.dto.MessageOutputDto
 import com.izhenius.aigent.data.dto.OutputTextContentDto
+import com.izhenius.aigent.data.dto.UsageDto
 import com.izhenius.aigent.domain.model.AssistantType
 import com.izhenius.aigent.domain.model.ChatMessageDataEntity
 import com.izhenius.aigent.domain.model.ChatMessageEntity
 import com.izhenius.aigent.domain.model.ChatRoleEntity
+import com.izhenius.aigent.domain.model.TokenDataEntity
 import org.json.JSONObject
 
 val coreInstructions: String = """
@@ -90,7 +92,7 @@ fun AssistantType.toInstructions(): String = when (this) {
     }
 }
 
-fun MessageOutputDto.toChatMessageEntity(): ChatMessageEntity {
+fun MessageOutputDto.toChatMessageEntity(usage: UsageDto? = null): ChatMessageEntity {
     val textContent = content
         .filterIsInstance<OutputTextContentDto>()
         .firstOrNull()
@@ -110,9 +112,22 @@ fun MessageOutputDto.toChatMessageEntity(): ChatMessageEntity {
         else -> ChatRoleEntity.Assistant
     }
 
+    val tokenData = usage?.let {
+        TokenDataEntity(
+            input = it.inputTokens,
+            output = it.outputTokens,
+            total = it.totalTokens,
+        )
+    } ?: TokenDataEntity(
+        input = 0,
+        output = 0,
+        total = 0,
+    )
+
     return ChatMessageEntity(
         id = id,
         role = role,
         data = data,
+        tokenData = tokenData,
     )
 }
