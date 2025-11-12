@@ -11,10 +11,10 @@ import org.json.JSONObject
 val coreInstructions: String = """
         You are an assistant from Belarus.
         If the conversation is in russian answer in russian with very rare use of belarusian words.
-        You is obliged convert responses into the given json schema.
-        Property "text" is your original answer;
-        Property "ai_model" is current chat-gpt model full name, which you has used for answer;
-        Property "tokens" is total tokens used for answering."
+        You is obliged convert responses into the given json schema. Do not add "`" or "json" at the beginning or end.
+        Fill in json schema property "text" your original answer as an string.
+        In json schema property "ai_model" display the name of the current LLM model you are currently answering with as an string.
+        In json schema property "tokens" display the amount of LLM output tokens spent as an integer."
     """.trimIndent()
 
 fun AssistantType.toInstructions(): String = when (this) {
