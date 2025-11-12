@@ -72,7 +72,13 @@ fun ChatScreen(
             TopAppBarContent(uiState.assistantType, viewModel::onUiAction)
         },
         bottomBar = {
-            BottomBarContent(input, uiState.aiModel, uiState.aiTemperature, viewModel::onUiAction)
+            BottomBarContent(
+                input = input,
+                aiModel = uiState.aiModel,
+                availableAiModels = uiState.availableAiModels,
+                aiTemperature = uiState.aiTemperature,
+                onUiAction = viewModel::onUiAction,
+            )
         },
     ) { paddings ->
         LazyColumn(
@@ -135,33 +141,17 @@ private fun TopAppBarContent(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    FilterChip(
-                        selected = assistantType == AssistantType.BUDDY,
-                        onClick = {
-                            onUiAction(
-                                ChatUiAction.OnChangeAssistantType(AssistantType.BUDDY),
-                            )
-                        },
-                        label = { Text("Buddy") },
-                    )
-                    FilterChip(
-                        selected = assistantType == AssistantType.SPECIALIST,
-                        onClick = {
-                            onUiAction(
-                                ChatUiAction.OnChangeAssistantType(AssistantType.SPECIALIST),
-                            )
-                        },
-                        label = { Text("Specialist") },
-                    )
-                    FilterChip(
-                        selected = assistantType == AssistantType.EXPERTS,
-                        onClick = {
-                            onUiAction(
-                                ChatUiAction.OnChangeAssistantType(AssistantType.EXPERTS),
-                            )
-                        },
-                        label = { Text("Experts") },
-                    )
+                    AssistantType.entries.forEach { entry ->
+                        FilterChip(
+                            selected = assistantType == entry,
+                            onClick = {
+                                onUiAction(
+                                    ChatUiAction.OnChangeAssistantType(entry),
+                                )
+                            },
+                            label = { Text(entry.name) },
+                        )
+                    }
                 }
             }
         },
@@ -172,6 +162,7 @@ private fun TopAppBarContent(
 private fun BottomBarContent(
     input: MutableState<String>,
     aiModel: AiModelEntity,
+    availableAiModels: List<AiModelEntity>,
     aiTemperature: AiTemperatureEntity,
     onUiAction: (ChatUiAction) -> Unit,
 ) {
@@ -186,33 +177,17 @@ private fun BottomBarContent(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(text = "Model:")
-            FilterChip(
-                selected = aiModel == AiModelEntity.ZAI_ORG,
-                onClick = {
-                    onUiAction(
-                        ChatUiAction.OnChangeModel(AiModelEntity.ZAI_ORG),
-                    )
-                },
-                label = { Text(AiModelEntity.ZAI_ORG.name) },
-            )
-            FilterChip(
-                selected = aiModel == AiModelEntity.DEEP_SEEK,
-                onClick = {
-                    onUiAction(
-                        ChatUiAction.OnChangeModel(AiModelEntity.DEEP_SEEK),
-                    )
-                },
-                label = { Text(AiModelEntity.DEEP_SEEK.name) },
-            )
-            FilterChip(
-                selected = aiModel == AiModelEntity.KIMI_K2,
-                onClick = {
-                    onUiAction(
-                        ChatUiAction.OnChangeModel(AiModelEntity.KIMI_K2),
-                    )
-                },
-                label = { Text(AiModelEntity.KIMI_K2.name) },
-            )
+            availableAiModels.forEach { item ->
+                FilterChip(
+                    selected = aiModel == item,
+                    onClick = {
+                        onUiAction(
+                            ChatUiAction.OnChangeModel(item),
+                        )
+                    },
+                    label = { Text(item.name) },
+                )
+            }
         }
         Row(
             modifier = Modifier.padding(horizontal = 16.dp),
@@ -220,33 +195,17 @@ private fun BottomBarContent(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(text = "Temperature:")
-            FilterChip(
-                selected = aiTemperature == AiTemperatureEntity.LOW,
-                onClick = {
-                    onUiAction(
-                        ChatUiAction.OnChangeTemperatureLevel(AiTemperatureEntity.LOW),
-                    )
-                },
-                label = { Text("Low") },
-            )
-            FilterChip(
-                selected = aiTemperature == AiTemperatureEntity.MEDIUM,
-                onClick = {
-                    onUiAction(
-                        ChatUiAction.OnChangeTemperatureLevel(AiTemperatureEntity.MEDIUM),
-                    )
-                },
-                label = { Text("Medium") },
-            )
-            FilterChip(
-                selected = aiTemperature == AiTemperatureEntity.HIGH,
-                onClick = {
-                    onUiAction(
-                        ChatUiAction.OnChangeTemperatureLevel(AiTemperatureEntity.HIGH),
-                    )
-                },
-                label = { Text("High") },
-            )
+            AiTemperatureEntity.entries.forEach { entry ->
+                FilterChip(
+                    selected = aiTemperature == entry,
+                    onClick = {
+                        onUiAction(
+                            ChatUiAction.OnChangeTemperatureLevel(entry),
+                        )
+                    },
+                    label = { Text(entry.name) },
+                )
+            }
         }
         Row(
             modifier = Modifier
@@ -296,7 +255,7 @@ private fun MessageBubble(message: ChatMessageEntity) {
                 text = if (isUser) {
                     "YOU"
                 } else {
-                    "${message.data.aiModel.uppercase()} (tokens:${message.data.tokens})"
+                    message.data.aiModel.uppercase()
                 },
                 modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 12.dp),
                 color = cardColors.contentColor.copy(alpha = 0.38f),

@@ -14,7 +14,6 @@ val coreInstructions: String = """
         You is obliged convert responses into the given json schema. Do not add "`" or "json" at the beginning or end.
         Fill in json schema property "text" your original answer as an string.
         In json schema property "ai_model" display the name of the current LLM model you are currently answering with as an string.
-        In json schema property "tokens" display the amount of LLM output tokens spent as an integer."
     """.trimIndent()
 
 fun AssistantType.toInstructions(): String = when (this) {
@@ -104,7 +103,6 @@ fun MessageOutputDto.toChatMessageEntity(): ChatMessageEntity {
     val data = ChatMessageDataEntity(
         text = dataJson.getString("text"),
         aiModel = dataJson.getString("ai_model"),
-        tokens = dataJson.getString("tokens"),
     )
 
     val role = when (role?.lowercase()) {
