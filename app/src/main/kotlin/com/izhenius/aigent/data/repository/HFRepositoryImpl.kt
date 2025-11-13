@@ -70,7 +70,7 @@ class HFRepositoryImpl(
 
         // Build request body according to HF API format
         val bodyJson = JSONObject()
-            .put("model", aiModel.apiValue)
+            .put("model", aiModel.id)
             .put(
                 "instructions",
                 "$coreInstructions\n${assistantType.toInstructions()}",
@@ -96,7 +96,7 @@ class HFRepositoryImpl(
                 .firstOrNull()
                 ?: throw IllegalStateException("No MessageOutputDto found in HF response")
 
-            return@withContext messageOutput.toChatMessageEntity(responseDto.usage)
+            return@withContext messageOutput.toChatMessageEntity(aiModel, responseDto.usage)
         }
     }
 }

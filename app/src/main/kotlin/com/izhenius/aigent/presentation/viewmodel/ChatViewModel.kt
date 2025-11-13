@@ -13,6 +13,9 @@ import com.izhenius.aigent.domain.repository.OpenAiRepository
 import com.izhenius.aigent.presentation.mvi.ChatUiAction
 import com.izhenius.aigent.presentation.mvi.ChatUiState
 import com.izhenius.aigent.presentation.mvi.MviViewModel
+import com.izhenius.aigent.util.calculateInputTokenCost
+import com.izhenius.aigent.util.calculateOutputTokenCost
+import com.izhenius.aigent.util.calculateTotalTokenCost
 import com.izhenius.aigent.util.launch
 import kotlinx.coroutines.Job
 
@@ -29,13 +32,14 @@ class ChatViewModel(
             messages = emptyMap(),
             currentMessages = emptyList(),
             isLoading = false,
-            aiTemperature = AiTemperatureEntity.MEDIUM,
-            aiModel = AiModelEntity.GPT_5_MINI,
+            aiTemperature = AiTemperatureEntity.LOW,
+            aiModel = AiModelEntity.GPT_5_NANO,
             availableAiModels = listOf(
-                AiModelEntity.GPT_5,
-                AiModelEntity.GPT_5_MINI,
                 AiModelEntity.GPT_5_NANO,
+                AiModelEntity.GPT_5_MINI,
+                AiModelEntity.GPT_5,
             ),
+            totalTokenData = TokenDataEntity(),
         )
     }
 
@@ -49,24 +53,43 @@ class ChatViewModel(
         }
     }
 
-    private fun calculateTokenTotals(messages: List<ChatMessageEntity>): Triple<Int, Int, Int> {
-        val assistantMessages = messages.filter { it.role == ChatRoleEntity.Assistant }
-        val totalInput = assistantMessages.sumOf { it.tokenData.input }
-        val totalOutput = assistantMessages.sumOf { it.tokenData.output }
-        val total = assistantMessages.sumOf { it.tokenData.total }
-        return Triple(totalInput, totalOutput, total)
+    private fun calculateTotalTokenData(messages: List<ChatMessageEntity>): TokenDataEntity {
+        val totalTokenDataItems = messages.filter { message ->
+            message.role == ChatRoleEntity.Assistant
+        }.groupBy { message ->
+            message.data.aiModel
+        }.map { (aiModel, messages) ->
+            TokenDataEntity(
+                inputTokens = messages.sumOf { it.tokenData.inputTokens },
+                outputTokens = messages.sumOf { it.tokenData.outputTokens },
+                totalTokens = messages.sumOf { it.tokenData.totalTokens },
+                inputCost = messages.sumOf { aiModel.calculateInputTokenCost(it.tokenData.inputTokens) },
+                outputCost = messages.sumOf { aiModel.calculateOutputTokenCost(it.tokenData.outputTokens) },
+                totalCost = messages.sumOf {
+                    aiModel.calculateTotalTokenCost(
+                        it.tokenData.inputTokens,
+                        it.tokenData.outputTokens,
+                    )
+                },
+            )
+        }
+        return TokenDataEntity(
+            inputTokens = totalTokenDataItems.sumOf { it.inputTokens },
+            outputTokens = totalTokenDataItems.sumOf { it.outputTokens },
+            totalTokens = totalTokenDataItems.sumOf { it.totalTokens },
+            inputCost = totalTokenDataItems.sumOf { it.inputCost },
+            outputCost = totalTokenDataItems.sumOf { it.outputCost },
+            totalCost = totalTokenDataItems.sumOf { it.totalCost },
+        )
     }
 
     private fun updateAssistantType(assistantType: AssistantType) {
         updateUiState {
             val currentMessages = messages[assistantType].orEmpty()
-            val (totalInput, totalOutput, total) = calculateTokenTotals(currentMessages)
             copy(
                 assistantType = assistantType,
                 currentMessages = currentMessages,
-                totalInputTokens = totalInput,
-                totalOutputTokens = totalOutput,
-                totalTokens = total,
+                totalTokenData = calculateTotalTokenData(currentMessages),
             )
         }
     }
@@ -87,14 +110,11 @@ class ChatViewModel(
         updateUiState {
             val updatedMessages = messages - assistantType
             val currentMessages = updatedMessages[assistantType].orEmpty()
-            val (totalInput, totalOutput, total) = calculateTokenTotals(currentMessages)
             copy(
                 messages = updatedMessages,
                 currentMessages = currentMessages,
                 isLoading = false,
-                totalInputTokens = totalInput,
-                totalOutputTokens = totalOutput,
-                totalTokens = total,
+                totalTokenData = calculateTotalTokenData(currentMessages),
             )
         }
     }
@@ -115,27 +135,20 @@ class ChatViewModel(
                 role = ChatRoleEntity.User,
                 data = ChatMessageDataEntity(
                     text = text,
-                    aiModel = "",
+                    aiModel = uiState.aiModel,
                 ),
-                tokenData = TokenDataEntity(
-                    input = 0,
-                    output = 0,
-                    total = 0,
-                ),
+                tokenData = TokenDataEntity(),
             )
             val updatedMessages = currentMessages + userMessage
 
             updateUiState {
                 val updatedMessagesMap = messages + (currentAssistantType to updatedMessages)
                 val currentMessages = updatedMessagesMap[currentAssistantType].orEmpty()
-                val (totalInput, totalOutput, total) = calculateTokenTotals(currentMessages)
                 copy(
                     messages = updatedMessagesMap,
                     currentMessages = currentMessages,
                     isLoading = true,
-                    totalInputTokens = totalInput,
-                    totalOutputTokens = totalOutput,
-                    totalTokens = total,
+                    totalTokenData = calculateTotalTokenData(currentMessages),
                 )
             }
 
@@ -169,14 +182,11 @@ class ChatViewModel(
             updateUiState {
                 val finalMessagesMap = messages + (currentAssistantType to finalMessages)
                 val finalMessages = finalMessagesMap[currentAssistantType].orEmpty()
-                val (totalInput, totalOutput, total) = calculateTokenTotals(finalMessages)
                 copy(
                     messages = finalMessagesMap,
                     currentMessages = finalMessages,
                     isLoading = false,
-                    totalInputTokens = totalInput,
-                    totalOutputTokens = totalOutput,
-                    totalTokens = total,
+                    totalTokenData = calculateTotalTokenData(finalMessages),
                 )
             }
         }

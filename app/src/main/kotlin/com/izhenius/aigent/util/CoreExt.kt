@@ -2,6 +2,7 @@ package com.izhenius.aigent.util
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import java.text.DecimalFormat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Deferred
@@ -47,4 +48,12 @@ fun <T> ViewModel.async(
     } finally {
         finallyBlock()
     }
+}
+
+fun Double.formatPrice(): String {
+    return DecimalFormat("0.00").format(this)
+}
+
+fun Double.formatCost(): String {
+    return DecimalFormat("0.000000").format(this)
 }
