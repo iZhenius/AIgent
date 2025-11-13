@@ -4,6 +4,7 @@ import com.izhenius.aigent.domain.model.AiModelEntity
 import com.izhenius.aigent.domain.model.AiTemperatureEntity
 import com.izhenius.aigent.domain.model.AssistantType
 import com.izhenius.aigent.domain.model.ChatMessageEntity
+import com.izhenius.aigent.domain.model.TokenDataEntity
 
 data class ChatUiState(
     val assistantType: AssistantType,
@@ -13,9 +14,7 @@ data class ChatUiState(
     val aiTemperature: AiTemperatureEntity,
     val aiModel: AiModelEntity,
     val availableAiModels: List<AiModelEntity>,
-    val totalInputTokens: Int = 0,
-    val totalOutputTokens: Int = 0,
-    val totalTokens: Int = 0,
+    val totalTokenData: TokenDataEntity,
 )
 
 sealed interface ChatUiAction {

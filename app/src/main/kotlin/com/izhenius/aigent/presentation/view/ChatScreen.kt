@@ -48,8 +48,11 @@ import com.izhenius.aigent.domain.model.AiTemperatureEntity
 import com.izhenius.aigent.domain.model.AssistantType
 import com.izhenius.aigent.domain.model.ChatMessageEntity
 import com.izhenius.aigent.domain.model.ChatRoleEntity
+import com.izhenius.aigent.domain.model.TokenDataEntity
 import com.izhenius.aigent.presentation.mvi.ChatUiAction
 import com.izhenius.aigent.presentation.viewmodel.ChatViewModel
+import com.izhenius.aigent.util.formatCost
+import com.izhenius.aigent.util.formatPrice
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -77,9 +80,7 @@ fun ChatScreen(
                 aiModel = uiState.aiModel,
                 availableAiModels = uiState.availableAiModels,
                 aiTemperature = uiState.aiTemperature,
-                totalInputTokens = uiState.totalInputTokens,
-                totalOutputTokens = uiState.totalOutputTokens,
-                totalTokens = uiState.totalTokens,
+                totalTokenData = uiState.totalTokenData,
                 onUiAction = viewModel::onUiAction,
             )
         },
@@ -167,18 +168,17 @@ private fun BottomBarContent(
     aiModel: AiModelEntity,
     availableAiModels: List<AiModelEntity>,
     aiTemperature: AiTemperatureEntity,
-    totalInputTokens: Int,
-    totalOutputTokens: Int,
-    totalTokens: Int,
+    totalTokenData: TokenDataEntity,
     onUiAction: (ChatUiAction) -> Unit,
 ) {
     Column(
         modifier = Modifier
-            .padding(top = 16.dp, bottom = 32.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
+            .padding(top = 16.dp, bottom = 32.dp)
+            .imePadding(),
+        verticalArrangement = Arrangement.Center,
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 16.dp),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -191,12 +191,28 @@ private fun BottomBarContent(
                             ChatUiAction.OnChangeModel(item),
                         )
                     },
-                    label = { Text(item.name) },
+                    label = {
+                        Column(
+                            verticalArrangement = Arrangement.Center,
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            Text(
+                                text = item.name,
+                                modifier = Modifier.padding(top = 8.dp, start = 8.dp, end = 8.dp, bottom = 2.dp),
+                                color = Color.Black,
+                            )
+                            Text(
+                                text = "$${item.inputTokenPrice.formatPrice()} / $${item.outputTokenPrice.formatPrice()}",
+                                modifier = Modifier.padding(bottom = 4.dp),
+                                color = Color.Gray,
+                            )
+                        }
+                    },
                 )
             }
         }
         Row(
-            modifier = Modifier.padding(horizontal = 16.dp),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -214,9 +230,7 @@ private fun BottomBarContent(
             }
         }
         Row(
-            modifier = Modifier
-                .padding(horizontal = 16.dp)
-                .imePadding(),
+            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp),
             verticalAlignment = Alignment.Bottom,
         ) {
             OutlinedTextField(
@@ -237,8 +251,14 @@ private fun BottomBarContent(
             ) { Text(text = "Send") }
         }
         Text(
-            text = "Tokens: Input: $totalInputTokens, Output: $totalOutputTokens, Total: $totalTokens",
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            text = "Tokens: ${totalTokenData.inputTokens} / ${totalTokenData.outputTokens} / ${totalTokenData.totalTokens}",
+            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp),
+            color = Color.Gray,
+            fontStyle = FontStyle.Italic,
+        )
+        Text(
+            text = "Cost: $${totalTokenData.inputCost.formatCost()} / $${totalTokenData.outputCost.formatCost()} / $${totalTokenData.totalCost.formatCost()}",
+            modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
             color = Color.Gray,
             fontStyle = FontStyle.Italic,
         )
@@ -267,7 +287,7 @@ private fun MessageBubble(message: ChatMessageEntity) {
                 text = if (isUser) {
                     "YOU"
                 } else {
-                    message.data.aiModel.uppercase()
+                    message.data.aiModel.name
                 },
                 modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 12.dp),
                 color = cardColors.contentColor.copy(alpha = 0.38f),
@@ -282,7 +302,13 @@ private fun MessageBubble(message: ChatMessageEntity) {
             }
             if (!isUser) {
                 Text(
-                    text = "Tokens: Input: ${message.tokenData.input}, Output: ${message.tokenData.output}, Total: ${message.tokenData.total}",
+                    text = "Tokens: ${message.tokenData.inputTokens} / ${message.tokenData.outputTokens} / ${message.tokenData.totalTokens}",
+                    modifier = Modifier.padding(start = 12.dp, end = 12.dp),
+                    color = cardColors.contentColor.copy(alpha = 0.6f),
+                    fontStyle = FontStyle.Italic,
+                )
+                Text(
+                    text = "Cost: $${message.tokenData.inputCost.formatCost()} / $${message.tokenData.outputCost.formatCost()} / $${message.tokenData.totalCost.formatCost()}",
                     modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
                     color = cardColors.contentColor.copy(alpha = 0.6f),
                     fontStyle = FontStyle.Italic,

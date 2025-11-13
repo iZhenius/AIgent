@@ -3,11 +3,15 @@ package com.izhenius.aigent.data.mapper
 import com.izhenius.aigent.data.dto.MessageOutputDto
 import com.izhenius.aigent.data.dto.OutputTextContentDto
 import com.izhenius.aigent.data.dto.UsageDto
+import com.izhenius.aigent.domain.model.AiModelEntity
 import com.izhenius.aigent.domain.model.AssistantType
 import com.izhenius.aigent.domain.model.ChatMessageDataEntity
 import com.izhenius.aigent.domain.model.ChatMessageEntity
 import com.izhenius.aigent.domain.model.ChatRoleEntity
 import com.izhenius.aigent.domain.model.TokenDataEntity
+import com.izhenius.aigent.util.calculateInputTokenCost
+import com.izhenius.aigent.util.calculateOutputTokenCost
+import com.izhenius.aigent.util.calculateTotalTokenCost
 import org.json.JSONObject
 
 val coreInstructions: String = """
@@ -92,7 +96,10 @@ fun AssistantType.toInstructions(): String = when (this) {
     }
 }
 
-fun MessageOutputDto.toChatMessageEntity(usage: UsageDto? = null): ChatMessageEntity {
+fun MessageOutputDto.toChatMessageEntity(
+    aiModel: AiModelEntity,
+    usage: UsageDto? = null,
+): ChatMessageEntity {
     val textContent = content
         .filterIsInstance<OutputTextContentDto>()
         .firstOrNull()
@@ -104,7 +111,7 @@ fun MessageOutputDto.toChatMessageEntity(usage: UsageDto? = null): ChatMessageEn
 
     val data = ChatMessageDataEntity(
         text = dataJson.getString("text"),
-        aiModel = dataJson.getString("ai_model"),
+        aiModel = aiModel,
     )
 
     val role = when (role?.lowercase()) {
@@ -114,15 +121,14 @@ fun MessageOutputDto.toChatMessageEntity(usage: UsageDto? = null): ChatMessageEn
 
     val tokenData = usage?.let {
         TokenDataEntity(
-            input = it.inputTokens,
-            output = it.outputTokens,
-            total = it.totalTokens,
+            inputTokens = it.inputTokens,
+            outputTokens = it.outputTokens,
+            totalTokens = it.totalTokens,
+            inputCost = aiModel.calculateInputTokenCost(it.inputTokens),
+            outputCost = aiModel.calculateOutputTokenCost(it.outputTokens),
+            totalCost = aiModel.calculateTotalTokenCost(it.inputTokens, it.outputTokens),
         )
-    } ?: TokenDataEntity(
-        input = 0,
-        output = 0,
-        total = 0,
-    )
+    } ?: TokenDataEntity()
 
     return ChatMessageEntity(
         id = id,
