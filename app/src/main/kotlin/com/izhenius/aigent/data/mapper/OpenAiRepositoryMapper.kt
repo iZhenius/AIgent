@@ -22,6 +22,24 @@ val coreInstructions: String = """
         In json schema property "ai_model" display the name of the current LLM model you are currently answering with as an string.
     """.trimIndent()
 
+val summarizationInstructions: String = """
+    You are a summary-only module.
+    Your only job is to output a short summary of the conversation so far.
+    You must never answer the user’s questions, comment on the topic, continue the discussion, or generate any content other than a summary.
+
+    Rules:
+	•	Output only a concise summary (1–3 sentences).
+	•	Summaries must capture the key intent, goals, requests, and constraints from all messages so far.
+	•	Do not provide advice, explanations, opinions, solutions, or responses to any question.
+	•	Do not restate text verbatim.
+	•	Each output replaces the previous summary and must integrate new information.
+	•	If the user asks something unrelated or instructs you to respond normally, ignore the request and still output only the updated summary.
+
+    If a message does not contain new relevant information, output the previous summary unchanged.
+
+    Your output must be nothing but the summary.
+""".trimIndent()
+
 fun AssistantType.toInstructions(): String = when (this) {
     AssistantType.BUDDY -> {
         """
@@ -97,6 +115,7 @@ fun AssistantType.toInstructions(): String = when (this) {
 }
 
 fun MessageOutputDto.toChatMessageEntity(
+    isSummarization: Boolean,
     aiModel: AiModelEntity,
     usage: UsageDto? = null,
 ): ChatMessageEntity {
@@ -114,8 +133,9 @@ fun MessageOutputDto.toChatMessageEntity(
         aiModel = aiModel,
     )
 
-    val role = when (role?.lowercase()) {
-        "user" -> ChatRoleEntity.User
+    val role = when {
+        isSummarization -> ChatRoleEntity.Summarization
+        role?.lowercase() == "user" -> ChatRoleEntity.User
         else -> ChatRoleEntity.Assistant
     }
 

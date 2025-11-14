@@ -13,8 +13,7 @@ enum class AiTemperatureEntity {
     val textVerbosity: String
         get() = when (this) {
             LOW -> "low"
-            MEDIUM -> "medium"
-            HIGH -> "high"
+            MEDIUM -> "low"
+            HIGH -> "medium"
         }
 }
-
