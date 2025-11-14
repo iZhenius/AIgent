@@ -17,6 +17,7 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -72,7 +73,7 @@ fun ChatScreen(
 
     Scaffold(
         topBar = {
-            TopAppBarContent(uiState.assistantType, viewModel::onUiAction)
+            TopAppBarContent(uiState.assistantType, uiState.isSummarizationNeeded, viewModel::onUiAction)
         },
         bottomBar = {
             BottomBarContent(
@@ -110,6 +111,7 @@ fun ChatScreen(
 @Composable
 private fun TopAppBarContent(
     assistantType: AssistantType,
+    isSummarizationNeeded: Boolean,
     onUiAction: (ChatUiAction) -> Unit,
 ) {
     TopAppBar(
@@ -141,20 +143,33 @@ private fun TopAppBarContent(
                         )
                     }
                 }
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    AssistantType.entries.forEach { entry ->
-                        FilterChip(
-                            selected = assistantType == entry,
-                            onClick = {
-                                onUiAction(
-                                    ChatUiAction.OnChangeAssistantType(entry),
-                                )
+                Column {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        AssistantType.entries.forEach { entry ->
+                            FilterChip(
+                                selected = assistantType == entry,
+                                onClick = {
+                                    onUiAction(
+                                        ChatUiAction.OnChangeAssistantType(entry),
+                                    )
+                                },
+                                label = { Text(entry.name) },
+                            )
+                        }
+                    }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Checkbox(
+                            checked = isSummarizationNeeded,
+                            onCheckedChange = { isChecked ->
+                                onUiAction(ChatUiAction.OnIsSummarizationNeededCheck(isChecked))
                             },
-                            label = { Text(entry.name) },
                         )
+                        Text(text = "Summarise")
                     }
                 }
             }
@@ -284,10 +299,10 @@ private fun MessageBubble(message: ChatMessageEntity) {
             modifier = Modifier.fillMaxWidth(0.85f),
         ) {
             Text(
-                text = if (isUser) {
-                    "YOU"
-                } else {
-                    message.data.aiModel.name
+                text = when (message.role) {
+                    ChatRoleEntity.User -> "YOU"
+                    ChatRoleEntity.Summarization -> "${message.data.aiModel.name} (SUMMARIZATION)"
+                    ChatRoleEntity.Assistant -> message.data.aiModel.name
                 },
                 modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 12.dp),
                 color = cardColors.contentColor.copy(alpha = 0.38f),

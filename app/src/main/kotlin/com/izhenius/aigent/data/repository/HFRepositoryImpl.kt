@@ -4,6 +4,7 @@ import android.util.Log
 import com.izhenius.aigent.data.dto.MessageOutputDto
 import com.izhenius.aigent.data.dto.OpenAiResponseDto
 import com.izhenius.aigent.data.mapper.coreInstructions
+import com.izhenius.aigent.data.mapper.summarizationInstructions
 import com.izhenius.aigent.data.mapper.toChatMessageEntity
 import com.izhenius.aigent.data.mapper.toInstructions
 import com.izhenius.aigent.data.network.HFApi
@@ -27,6 +28,7 @@ class HFRepositoryImpl(
         input: List<ChatMessageEntity>,
         aiModel: AiModelEntity,
         aiTemperature: AiTemperatureEntity,
+        isSummarization: Boolean,
     ): ChatMessageEntity = withContext(Dispatchers.IO) {
         // Build input array with role and content objects
         val inputArray = JSONArray()
@@ -73,7 +75,11 @@ class HFRepositoryImpl(
             .put("model", aiModel.id)
             .put(
                 "instructions",
-                "$coreInstructions\n${assistantType.toInstructions()}",
+                if (isSummarization) {
+                    summarizationInstructions
+                } else {
+                    "$coreInstructions\n${assistantType.toInstructions()}"
+                },
             )
             .put("input", inputArray)
             .put("reasoning", reasoningObject)
@@ -96,8 +102,11 @@ class HFRepositoryImpl(
                 .firstOrNull()
                 ?: throw IllegalStateException("No MessageOutputDto found in HF response")
 
-            return@withContext messageOutput.toChatMessageEntity(aiModel, responseDto.usage)
+            return@withContext messageOutput.toChatMessageEntity(
+                isSummarization = isSummarization,
+                aiModel = aiModel,
+                usage = responseDto.usage
+            )
         }
     }
 }
-

@@ -4,6 +4,7 @@ import android.util.Log
 import com.izhenius.aigent.data.dto.MessageOutputDto
 import com.izhenius.aigent.data.dto.OpenAiResponseDto
 import com.izhenius.aigent.data.mapper.coreInstructions
+import com.izhenius.aigent.data.mapper.summarizationInstructions
 import com.izhenius.aigent.data.mapper.toChatMessageEntity
 import com.izhenius.aigent.data.mapper.toInstructions
 import com.izhenius.aigent.data.network.OpenAiApi
@@ -27,6 +28,7 @@ class OpenAiRepositoryImpl(
         input: List<ChatMessageEntity>,
         aiModel: AiModelEntity,
         aiTemperature: AiTemperatureEntity,
+        isSummarization: Boolean,
     ): ChatMessageEntity = withContext(Dispatchers.IO) {
         val inputArray = JSONArray()
         input.forEach { message ->
@@ -71,7 +73,11 @@ class OpenAiRepositoryImpl(
             .put("model", aiModel.id)
             .put(
                 "instructions",
-                "$coreInstructions\n${assistantType.toInstructions()}",
+                if (isSummarization) {
+                    summarizationInstructions
+                } else {
+                    "$coreInstructions\n${assistantType.toInstructions()}"
+                },
             )
             .put("input", inputArray)
             .put("text", textObject)
@@ -94,7 +100,11 @@ class OpenAiRepositoryImpl(
                 .firstOrNull()
                 ?: throw IllegalStateException("No MessageOutputDto found in OpenAI response")
 
-            return@withContext messageOutput.toChatMessageEntity(aiModel, responseDto.usage)
+            return@withContext messageOutput.toChatMessageEntity(
+                isSummarization = isSummarization,
+                aiModel = aiModel,
+                usage = responseDto.usage,
+            )
         }
     }
 }

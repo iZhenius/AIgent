@@ -12,5 +12,6 @@ interface OpenAiRepository {
         input: List<ChatMessageEntity>,
         aiModel: AiModelEntity,
         aiTemperature: AiTemperatureEntity,
+        isSummarization: Boolean,
     ): ChatMessageEntity
 }

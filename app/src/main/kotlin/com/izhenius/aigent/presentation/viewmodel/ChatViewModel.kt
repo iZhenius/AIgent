@@ -11,11 +11,11 @@ import com.izhenius.aigent.domain.model.TokenDataEntity
 import com.izhenius.aigent.domain.repository.HFRepository
 import com.izhenius.aigent.domain.repository.OpenAiRepository
 import com.izhenius.aigent.presentation.mvi.ChatUiAction
+import com.izhenius.aigent.presentation.mvi.ChatUiReducer
+import com.izhenius.aigent.presentation.mvi.ChatUiReducer.assistantTypeChange
+import com.izhenius.aigent.presentation.mvi.ChatUiReducer.messagesChange
 import com.izhenius.aigent.presentation.mvi.ChatUiState
 import com.izhenius.aigent.presentation.mvi.MviViewModel
-import com.izhenius.aigent.util.calculateInputTokenCost
-import com.izhenius.aigent.util.calculateOutputTokenCost
-import com.izhenius.aigent.util.calculateTotalTokenCost
 import com.izhenius.aigent.util.launch
 import kotlinx.coroutines.Job
 
@@ -25,13 +25,11 @@ class ChatViewModel(
 ) : MviViewModel<ChatUiState, ChatUiAction>() {
 
     private var sendMessageJob: Job? = null
+    private var summariseMessagesJob: Job? = null
 
     override fun setInitialUiState(): ChatUiState {
-        return ChatUiState(
+        return ChatUiReducer.initial(
             assistantType = AssistantType.BUDDY,
-            messages = emptyMap(),
-            currentMessages = emptyList(),
-            isLoading = false,
             aiTemperature = AiTemperatureEntity.LOW,
             aiModel = AiModelEntity.GPT_5_NANO,
             availableAiModels = listOf(
@@ -39,7 +37,6 @@ class ChatViewModel(
                 AiModelEntity.GPT_5_MINI,
                 AiModelEntity.GPT_5,
             ),
-            totalTokenData = TokenDataEntity(),
         )
     }
 
@@ -50,47 +47,13 @@ class ChatViewModel(
             is ChatUiAction.OnChangeTemperatureLevel -> updateTemperatureLevel(uiAction.aiTemperature)
             is ChatUiAction.OnChangeModel -> updateModel(uiAction.aiModel)
             is ChatUiAction.OnClearChat -> clearChat()
+            is ChatUiAction.OnIsSummarizationNeededCheck -> handleOnIsSummarizationNeededCheck(uiAction.isChecked)
         }
-    }
-
-    private fun calculateTotalTokenData(messages: List<ChatMessageEntity>): TokenDataEntity {
-        val totalTokenDataItems = messages.filter { message ->
-            message.role == ChatRoleEntity.Assistant
-        }.groupBy { message ->
-            message.data.aiModel
-        }.map { (aiModel, messages) ->
-            TokenDataEntity(
-                inputTokens = messages.sumOf { it.tokenData.inputTokens },
-                outputTokens = messages.sumOf { it.tokenData.outputTokens },
-                totalTokens = messages.sumOf { it.tokenData.totalTokens },
-                inputCost = messages.sumOf { aiModel.calculateInputTokenCost(it.tokenData.inputTokens) },
-                outputCost = messages.sumOf { aiModel.calculateOutputTokenCost(it.tokenData.outputTokens) },
-                totalCost = messages.sumOf {
-                    aiModel.calculateTotalTokenCost(
-                        it.tokenData.inputTokens,
-                        it.tokenData.outputTokens,
-                    )
-                },
-            )
-        }
-        return TokenDataEntity(
-            inputTokens = totalTokenDataItems.sumOf { it.inputTokens },
-            outputTokens = totalTokenDataItems.sumOf { it.outputTokens },
-            totalTokens = totalTokenDataItems.sumOf { it.totalTokens },
-            inputCost = totalTokenDataItems.sumOf { it.inputCost },
-            outputCost = totalTokenDataItems.sumOf { it.outputCost },
-            totalCost = totalTokenDataItems.sumOf { it.totalCost },
-        )
     }
 
     private fun updateAssistantType(assistantType: AssistantType) {
         updateUiState {
-            val currentMessages = messages[assistantType].orEmpty()
-            copy(
-                assistantType = assistantType,
-                currentMessages = currentMessages,
-                totalTokenData = calculateTotalTokenData(currentMessages),
-            )
+            assistantTypeChange(assistantType)
         }
     }
 
@@ -108,15 +71,15 @@ class ChatViewModel(
 
     private fun clearChat() {
         updateUiState {
-            val updatedMessages = messages - assistantType
-            val currentMessages = updatedMessages[assistantType].orEmpty()
-            copy(
-                messages = updatedMessages,
-                currentMessages = currentMessages,
+            messagesChange(
+                messages = uiState.messages - uiState.assistantType,
                 isLoading = false,
-                totalTokenData = calculateTotalTokenData(currentMessages),
             )
         }
+    }
+
+    private fun handleOnIsSummarizationNeededCheck(isChecked: Boolean) {
+        updateUiState { copy(isSummarizationNeeded = isChecked) }
     }
 
     private fun sendMessage(text: String) {
@@ -127,8 +90,7 @@ class ChatViewModel(
                 updateUiState { copy(isLoading = false) }
             },
         ) {
-            val currentAssistantType = uiState.assistantType
-            val currentMessages = uiState.messages[currentAssistantType].orEmpty()
+            updateUiState { copy(isLoading = true) }
 
             val userMessage = ChatMessageEntity(
                 id = System.nanoTime().toString(),
@@ -139,54 +101,84 @@ class ChatViewModel(
                 ),
                 tokenData = TokenDataEntity(),
             )
-            val updatedMessages = currentMessages + userMessage
-
+            val updatedByUserMessages = uiState.currentMessages + userMessage
             updateUiState {
-                val updatedMessagesMap = messages + (currentAssistantType to updatedMessages)
-                val currentMessages = updatedMessagesMap[currentAssistantType].orEmpty()
-                copy(
-                    messages = updatedMessagesMap,
-                    currentMessages = currentMessages,
+                messagesChange(
+                    messages = uiState.messages + (uiState.assistantType to updatedByUserMessages),
                     isLoading = true,
-                    totalTokenData = calculateTotalTokenData(currentMessages),
                 )
             }
 
-            val aiMessage = when (uiState.aiModel) {
-                AiModelEntity.GPT_5,
-                AiModelEntity.GPT_5_MINI,
-                AiModelEntity.GPT_5_NANO,
-                    -> {
-                    openAiRepository.sendInput(
-                        assistantType = currentAssistantType,
-                        input = updatedMessages,
-                        aiModel = uiState.aiModel,
-                        aiTemperature = uiState.aiTemperature,
-                    )
-                }
+            val lastSummarizationIndex = updatedByUserMessages.indexOfLast {
+                it.role == ChatRoleEntity.Summarization
+            }.coerceAtLeast(0)
+            val fromLastSummarizationMessages =
+                updatedByUserMessages.subList(lastSummarizationIndex, updatedByUserMessages.size)
+            val summarizationMessage = if (uiState.isSummarizationNeeded) {
+                summariseMessages(fromLastSummarizationMessages)
+            } else null
 
-                AiModelEntity.ZAI_ORG,
-                AiModelEntity.DEEP_SEEK,
-                AiModelEntity.KIMI_K2,
-                    -> {
-                    hfRepository.sendInput(
-                        assistantType = currentAssistantType,
-                        input = updatedMessages,
-                        aiModel = uiState.aiModel,
-                        aiTemperature = uiState.aiTemperature,
-                    )
-                }
-            }
-            val finalMessages = updatedMessages + aiMessage
-
+            val assistantMessage = sendInput(
+                assistantType = uiState.assistantType,
+                messages = fromLastSummarizationMessages,
+            )
+            val updatedByAssistantMessages =
+                updatedByUserMessages + listOfNotNull(summarizationMessage, assistantMessage)
             updateUiState {
-                val finalMessagesMap = messages + (currentAssistantType to finalMessages)
-                val finalMessages = finalMessagesMap[currentAssistantType].orEmpty()
-                copy(
-                    messages = finalMessagesMap,
-                    currentMessages = finalMessages,
+                messagesChange(
+                    messages = uiState.messages + (uiState.assistantType to updatedByAssistantMessages),
                     isLoading = false,
-                    totalTokenData = calculateTotalTokenData(finalMessages),
+                )
+            }
+        }
+    }
+
+    private suspend fun summariseMessages(
+        messages: List<ChatMessageEntity>,
+    ): ChatMessageEntity? {
+        if (messages.isEmpty()) return null
+        val assistantMessageCount = messages.count { it.role == ChatRoleEntity.Assistant }
+        val isSummarizationThresholdReached = if (assistantMessageCount > 0 && uiState.summarizationThreshold > 0) {
+            (assistantMessageCount % uiState.summarizationThreshold) == 0
+        } else false
+        if (isSummarizationThresholdReached.not()) return null
+
+        return sendInput(
+            assistantType = uiState.assistantType,
+            messages = messages,
+            isSummarization = true,
+        )
+    }
+
+    private suspend fun sendInput(
+        assistantType: AssistantType,
+        messages: List<ChatMessageEntity>,
+        isSummarization: Boolean = false,
+    ): ChatMessageEntity {
+        return when (uiState.aiModel) {
+            AiModelEntity.GPT_5,
+            AiModelEntity.GPT_5_MINI,
+            AiModelEntity.GPT_5_NANO,
+                -> {
+                openAiRepository.sendInput(
+                    assistantType = assistantType,
+                    input = messages,
+                    aiModel = uiState.aiModel,
+                    aiTemperature = uiState.aiTemperature,
+                    isSummarization = isSummarization,
+                )
+            }
+
+            AiModelEntity.ZAI_ORG,
+            AiModelEntity.DEEP_SEEK,
+            AiModelEntity.KIMI_K2,
+                -> {
+                hfRepository.sendInput(
+                    assistantType = assistantType,
+                    input = messages,
+                    aiModel = uiState.aiModel,
+                    aiTemperature = uiState.aiTemperature,
+                    isSummarization = isSummarization,
                 )
             }
         }
